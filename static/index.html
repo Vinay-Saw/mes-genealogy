@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MES Genealogy Demo</title>
+<style>
+body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 40px; }
+.container { max-width: 800px; margin: 0 auto; }
+h1 { font-size: 2.5rem; color: #38bdf8; }
+.card { background: #1e293b; border-radius: 12px; padding: 24px; margin: 20px 0; border: 1px solid #334155; }
+a.btn { display: inline-block; background: #0284c7; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-size: 1.2rem; margin: 10px; }
+a.btn:hover { background: #0369a1; }
+.note { color: #94a3b8; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Shop-floor MES with Genealogy</h1>
+  <p>ISA-95 shaped execution system. Orders, OEE, traceability, recall.</p>
+  <div class="card">
+    <h2>Role-split UIs</h2>
+    <a class="btn" href="/operator">Operator HMI (Glove-friendly)</a>
+    <a class="btn" href="/planner">Planner Dashboard</a>
+  </div>
+  <div class="card">
+    <h3>Demo highlights</h3>
+    <ul>
+      <li>Strict state machine: released → running → held → complete</li>
+      <li>Managed downtime reason codes (no free text)</li>
+      <li>Genealogy: material lot → serial/batch → machine → operator</li>
+      <li>OEE = Availability × Performance × Quality + Pareto</li>
+      <li>Recall drill: one query reconstructs history + quality waiver</li>
+      <li>ERP boundary: export completions/scrap as CSV</li>
+    </ul>
+    <p class="note">Seeded with a week of shifts so OEE is not zeros. Current order: 10482 for 5,000 units.</p>
+  </div>
+  <p class="note">Interview line: “I can reconstruct a unit’s parents, the machine state at that minute, and who waived the defect.”</p>
+</div>
+</body>
+</html>
