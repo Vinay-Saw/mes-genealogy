@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planner Dashboard - MES</title>
+<style>
+body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 24px; }
+h1 { color: #0ea5e9; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+.metric { font-size: 2.5rem; font-weight: 700; color: #0369a1; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+button, input, select { padding: 10px 16px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; }
+button { background: #0ea5e9; color: white; border: none; cursor: pointer; }
+button:hover { background: #0284c7; }
+.oee-bar { height: 12px; background: #e2e8f0; border-radius: 6px; margin: 8px 0; overflow: hidden; }
+.oee-fill { height: 100%; background: #22c55e; }
+</style>
+</head>
+<body>
+<h1>Planner Dashboard</h1>
+<p>Release orders, monitor OEE, run recall drills. ERP boundary: export CSV.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>OEE (last 7 days)</h2>
+    <div id="oee">Loading...</div>
+    <h3>Loss Pareto</h3>
+    <div id="pareto"></div>
+  </div>
+  <div class="card">
+    <h2>Release Order</h2>
+    <input id="orderNum" placeholder="Order number" value="10483">
+    <input id="qty" type="number" placeholder="Quantity" value="3000">
+    <input id="product" placeholder="Product" value="PART-C">
+    <button onclick="releaseOrder()">Release Order</button>
+    <div id="orders" style="margin-top:20px; max-height:300px; overflow:auto;"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h2>Recall Drill</h2>
+  <input id="serialSearch" placeholder="Serial or batch (e.g. BATCH-HIST-10000 or enter from operator)" style="width:60%;">
+  <button onclick="doRecall()">Search Genealogy</button>
+  <div id="recallResult" style="margin-top:16px;"></div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h2>ERP Boundary</h2>
+  <a href="/api/erp/export" download><button>Export Completions & Scrap (CSV)</button></a>
+  <p style="color:#64748b;">Orders in from ERP, completions/scrap out. No SAP rebuild.</p>
+</div>
+
+<script>
+async function loadOEE() {
+  const oee = await (await fetch('/api/oee?days=7')).json();
+  document.getElementById('oee').innerHTML = `
+    <div class="metric">${oee.oee}%</div>
+    <div>A: ${oee.availability}% × P: ${oee.performance}% × Q: ${oee.quality}%</div>
+    <div class="oee-bar"><div class="oee-fill" style="width:${oee.oee}%"></div></div>
+    Good: ${oee.good} | Scrap: ${oee.scrap}
+  `;
+  let phtml = '<table><tr><th>Code</th><th>Desc</th><th>Mins</th></tr>';
+  oee.pareto.forEach(p => {
+    phtml += `<tr><td>${p.code}</td><td>${p.description}</td><td>${Math.round(p.total_mins||0)}</td></tr>`;
+  });
+  phtml += '</table>';
+  document.getElementById('pareto').innerHTML = phtml || 'No losses recorded';
+}
+
+async function loadOrders() {
+  const orders = await (await fetch('/api/orders')).json();
+  let html = '<table><tr><th>Order</th><th>Status</th><th>Good</th><th>Scrap</th></tr>';
+  orders.slice(0,8).forEach(o => {
+    html += `<tr><td>${o.order_number}</td><td>${o.status}</td><td>${o.quantity_good||0}</td><td>${o.quantity_scrap||0}</td></tr>`;
+  });
+  html += '</table>';
+  document.getElementById('orders').innerHTML = html;
+}
+
+async function releaseOrder() {
+  const body = {
+    order_number: document.getElementById('orderNum').value,
+    product_code: document.getElementById('product').value,
+    quantity_ordered: parseInt(document.getElementById('qty').value),
+    user_id: 1
+  };
+  await fetch('/api/orders', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  alert('Order released');
+  loadOrders();
+}
+
+async function doRecall() {
+  const serial = document.getElementById('serialSearch').value.trim();
+  if (!serial) return;
+  const data = await (await fetch(`/api/recall/${serial}`)).json();
+  let html = `<p><strong>${data.summary || 'No records'}</strong></p>`;
+  if (data.genealogy && data.genealogy.length) {
+    html += '<h4>Genealogy</h4><ul>';
+    data.genealogy.forEach(g => {
+      html += `<li>Lot ${g.lot_number || '?'} on ${g.machine_name || '?'} by ${g.operator_name || '?'} at ${g.timestamp?.slice(0,16)}</li>`;
+    });
+    html += '</ul>';
+  }
+  if (data.quality_checks && data.quality_checks.length) {
+    html += '<h4>Quality</h4><ul>';
+    data.quality_checks.forEach(q => {
+      html += `<li>${q.check_type}: ${q.result} ${q.waived_by_name ? '(waived by ' + q.waived_by_name + ')' : ''}</li>`;
+    });
+    html += '</ul>';
+  }
+  document.getElementById('recallResult').innerHTML = html;
+}
+
+loadOEE();
+loadOrders();
+</script>
+</body>
+</html>
